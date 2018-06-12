@@ -1,0 +1,17 @@
+= Module settings
+
+All properties start with the *propertiesModule.* prefix.
+
+|===
+|Property |Type |Description |Default
+
+|conversionService
+|`org.springframework.core.convert.ConversionService`
+|Optional ConversionService instance to be used to convert properties. Defaults to the default ConversionService if none is specified.
+|
+
+|conversionServiceBean
+|`java.lang.String`
+|Optional The name of the ConversionService instance to be used to convert properties.
+|
+|===

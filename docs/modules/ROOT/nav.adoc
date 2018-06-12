@@ -1,0 +1,8 @@
+* xref:index.adoc[Quick start]
+* xref:releases/index.adoc[Releases]
+** xref:releases/1.x.adoc[1.x]
+
+* xref:configuration-properties.adoc[Configuration properties]
+
+* xref:configuration.adoc[Configuring custom properties]
+* xref:usage.adoc[Working with custom properties]

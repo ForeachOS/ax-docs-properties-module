@@ -1,0 +1,11 @@
+= Working with properties
+
+If the Properties module is configured correctly and the services are wired, the properties of a specific entity can be read and set as follow:
+```java
+Foo foo = new Foo( "aFoo" );
+UserProperties userProperties = userPropertiesService.getProperties( userId );
+Set<Foo> foos = userProperties.getValue( "userFoo" );
+foos.add( foo );
+userPropertiesService.saveProperties( userProperties );
+```
+_Note that properties should always be saved after updating._

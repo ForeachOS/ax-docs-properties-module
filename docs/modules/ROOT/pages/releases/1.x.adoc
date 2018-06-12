@@ -1,0 +1,7 @@
+= 1.x.x release notes
+
+[#1-1-1]
+== 1.1.1.RELEASE
+
+* Switched `PropertiesModuleSettings` to `@ConfigurationProperties` instead of the deprecated `AcrossModuleSettings`
+* settings now support Spring configuration metadata

@@ -1,0 +1,35 @@
+= PropertiesModule releases
+
+[[module-artifact]]
+== Artifact
+
+[source,xml]
+----
+<dependencies>
+    <dependency>
+        <groupId>com.foreach.across.modules</groupId>
+        <artifactId>properties-module</artifactId>
+    </dependency>
+</dependencies>
+----
+
+== Release notes
+
+UserModule follows a https://semver.org[semantic versioning] scheme.
+
+* xref:releases/1.x.adoc#1-1-1[1.1.1]
+
+[[module-dependencies]]
+== Module dependencies
+
+PropertiesModule has optional dependencies on AcrossWebModule, EntityModule and AdminWebModule.
+
+.Module dependencies
+|===
+|Module |Type |Description
+
+|<<integration:adminweb-entity,EntityModule>>
+|optional
+|In combination with `AdminWebModule` this enables the management forms in the administration UI.
+|===
+
