@@ -1,59 +1,225 @@
-= Configuration
+= Configuration with custom properties
 
-== Installers
+`PropertiesModule` can extend any entity with a set of key/value properties which are linked to the entity.
+
+This is useful for cases where you are writing your own module and wish to allow consumers of your module to
+registry their own custom properties, linked to an entity inside your module.
+
+To achieve this, you will have to implement and provide certain classes.
+The following examples extend a `Client` entity with custom properties.
+
+== Custom properties installer
+
 In order to extend existing entities with properties, the tables for these properties have to be installed.
 The client application can do this by registering installers that extend from EntityPropertiesInstaller or RevisionBasedEntityPropertiesInstaller.
 
-== Repositories
-The Properties module offers a base implementation of EntityPropertiesRepository that can be extended with a typed implementation.
+.Example that creates the client properties table.
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+@Installer(description = "Installs the client properties table", version = 1)
+public class ClientPropertiesSchemaInstaller extends EntityPropertiesInstaller
+{
+	private final SchemaConfiguration schemaConfiguration;
 
-== Services
+	public ClientPropertiesSchemaInstaller( SchemaConfiguration schemaConfiguration ) {
+		this.schemaConfiguration = schemaConfiguration;
+	}
+
+	@Override
+	protected String getTableName() {
+		return schemaConfiguration.getCurrentTableName( "table_client" ); # <1>
+	}
+
+	@Override
+	protected String getKeyColumnName() {
+		return "client_id"; # <2>
+	}
+}
+----
+
+<1> Refers to your table name of your entity
+<2> Refers to the primary key of your entity
+
+== Custom properties repository
+
+The Properties module offers a base implementation of EntityPropertiesRepository that can be extended with a typed implementation.
+It might be useful to add caching to this layer.
+
+.Example that creates the client properties repository.
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+@Repository
+public class ClientPropertiesRepository extends EntityPropertiesRepository<Long>
+{
+	public ClientPropertiesRepository( EntityPropertiesDescriptor configuration ) {
+		super( configuration );
+	}
+
+	@Cacheable("clientPropertiesCache")
+	@Transactional(readOnly = true)
+	@Override
+	public StringPropertiesSource loadProperties( Long entityId ) {
+		return super.loadProperties( entityId );
+	}
+
+	@CacheEvict(value = "clientPropertiesCache", key = "#entityId")
+	@Transactional
+	@Override
+	public void saveProperties( Long entityId, StringPropertiesSource properties ) {
+		super.saveProperties( entityId, properties );
+	}
+
+	@CacheEvict(value = "clientPropertiesCache", key = "#entityId")
+	@Transactional
+	@Override
+	public void deleteProperties( Long entityId ) {
+		super.deleteProperties( entityId );
+	}
+}
+----
+
+== Custom properties service
 The client application should then extend either AbstractEntityPropertiesService or AbstractRevisionBasedEntityPropertiesService.
 These services can then be wired into the entity services and used as described below.
 
-== Registries
+.Example that creates the `ClientPropertiesService`
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+public interface ClientPropertiesService extends EntityPropertiesService<ClientProperties, Long>
+{
+}
+----
+
+.The implementation of the `ClientPropertiesService`
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+@Service
+public class ClientPropertiesServiceImpl extends AbstractEntityPropertiesService<ClientProperties, Long> implements ClientPropertiesService
+{
+	public ClientPropertiesServiceImpl( EntityPropertiesRegistry entityPropertiesRegistry,
+	                                  EntityPropertiesRepository<Long> entityPropertiesRepository ) {
+		super( entityPropertiesRegistry, entityPropertiesRepository );
+	}
+
+	@Override
+	protected ClientProperties createEntityProperties( Long entityId,
+	                                                 PropertyTypeRegistry<String> propertyTypeRegistry,
+	                                                 StringPropertiesSource source ) {
+		return new ClientProperties( entityId, propertyTypeRegistry, source );
+	}
+}
+----
+
+== Custom properties registry
 The entities with properties should have a registry class extending from EntityPropertiesRegistry.
 Registries are classes that contain a map for the properties added to a specific entity.
-For example, a User entity class can have a corresponding UserPropertiesRegistry class.
+For example, a Client entity class can have a corresponding ClientPropertiesRegistry class.
 
-== Properties configuration
+.The implementation of the `ClientPropertiesRegistry`
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+@Service
+public class ClientPropertiesRegistry extends EntityPropertiesRegistry
+{
+	public ClientPropertiesRegistry( EntityPropertiesDescriptor descriptor ) {
+		super( descriptor );
+	}
+}
+----
+
+== Custom properties configuration
 The properties for a specific entity are configured in a configuration class extending from AbstractEntityPropertiesConfiguration.
 This class will specify the entity class, table name, the identifying column name and wire all classes extended as described above.
 
-== Property registration
-The client application should register the properties during application startup as follows:
-```java
-@PostConstruct
-protected void registerProperties() {
-    userPropertiesRegistry.register( currentModule, "registration_code", String.class );
-}
-```
-This snippet should be contained in a configuration class and autowire the current module and the specific EntityPropertiesRegistry for which this configuration is happening:
-```java
-@Autowired
-@Module(AcrossModule.CURRENT_MODULE)
-private AcrossModule currentModule;
+.The implementation of the `ClientPropertiesConfiguration`
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+@Configuration
+public class ClientPropertiesConfiguration extends AbstractEntityPropertiesConfiguration
+{
+	public static final String ID = ClientModule.NAME + ".ClientProperties";
 
-@Autowired
-private UserPropertiesRegistry userPropertiesRegistry;
-```
+	@Override
+	public Class<?> entityClass() {
+		return Client.class;
+	}
+
+	@Override
+	public String propertiesId() {
+		return ID;
+	}
+
+	@Override
+	protected String originalTableName() {
+		return "table_client_properties";
+	}
+
+	@Override
+	public String keyColumnName() {
+		return "client_id";
+	}
+
+	@Bean(name = "clientPropertiesService")
+	@Override
+	public ClientPropertiesService service() {
+		return new ClientPropertiesServiceImpl( registry(), clientPropertiesRepository() );
+	}
+
+	@Bean
+	public ClientPropertiesRepository clientPropertiesRepository() {
+		return new ClientPropertiesRepository( this );
+	}
+
+	@Bean(name = "clientPropertiesRegistry")
+	@Override
+	public ClientPropertiesRegistry registry() {
+		return new ClientPropertiesRegistry( this );
+	}
+}
+----
+
+== Custom property registration
+The comsuming application should register the properties during application startup as follows:
+
+.Example on how to register your properties in your application
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+	@Autowired
+	public void registerProperties( ClientPropertiesRegistry clientPropertiesRegistry,
+	                                       AcrossModule currentModule ) {
+		clientPropertiesRegistry.register( currentModule, "client_code",
+		                                 TypeDescriptor.valueOf( String.class ) );
+	}
+----
+
+This snippet should be contained in a configuration class.
 
 This registry contains the definition of the property key to its implementation class and optionally a default value.
 See EntityPropertiesRegistry for all available options.
 
-=== Defaults
+=== Providing a default value for a custom property
 The Properties module supports simple types and parametrized types for registries. When registering a mapping, the client application can supply a default value.
 These defaults should not be changed by client code. In order to enforce this, the Properties module uses PropertyFactory from the Foreach common libraries as a way to construct these defaults.
 TypeDescriptors (from Spring) are used to describe the parameter types.
 
-Examples:
-```java
+.Example on how to register your properties with options to provide a default value.
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
 // A SingletonPropertyFactory used for an enum:
-userPropertiesRegistry.register( currentModule, "enum_property", AnEnum.class,
+clientPropertiesRegistry.register( currentModule, "enum_property", AnEnum.class,
                                  SingletonPropertyFactory.<String, AnEnum>forValue( AnEnum.SOME_VALUE ) );
+
 // An anonymous implementation of PropertyFactory for a Set of Foo (which is an entity):
-userPropertiesRegistry.register( currentModule,
-                                 "userFoo",
+clientPropertiesRegistry.register( currentModule,
+                                 "foo_property",
                                  TypeDescriptor.collection( Set.class, TypeDescriptor.valueOf( Foo.class ) ),
                                  new PropertyFactory<String, Object>()
                                  {
@@ -63,4 +229,4 @@ userPropertiesRegistry.register( currentModule,
                                      }
                                  }
 );
-```
+----
