@@ -8,6 +8,33 @@ registry their own custom properties, linked to an entity inside your module.
 To achieve this, you will have to implement and provide certain classes.
 The following examples extend a `Client` entity with custom properties.
 
+== Custom properties class
+
+If you want to extend existing entities with properties, you will have to create a holder class for these properties. A simple class can look like this:
+
+.Example of a client properties class
+[source,java,indent=0]
+[subs="verbatim,quotes,attributes"]
+----
+public class ClientProperties extends EntityProperties<Long>
+{
+	private final Long clientId;
+
+	public ClientProperties( long clientId,
+	                       PropertyTypeRegistry<String> propertyTypeRegistry,
+	                       PropertiesSource source ) {
+		super( propertyTypeRegistry, source );
+
+		this.clientId = clientId;
+	}
+
+	@Override
+	public Long getId() {
+		return clientId;
+	}
+}
+----
+
 == Custom properties installer
 
 In order to extend existing entities with properties, the tables for these properties have to be installed.
