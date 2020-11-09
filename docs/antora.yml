@@ -1,5 +1,5 @@
 name: properties-module
 title: "Module: Properties"
-version: master
+version: 2.1.0-SNAPSHOT
 nav:
 - modules/ROOT/nav.adoc
